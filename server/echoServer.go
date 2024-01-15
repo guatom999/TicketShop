@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/guatom999/TicketShop/config"
+	"github.com/guatom999/TicketShop/modules/middlewares/middlewaresUseCases"
+	"github.com/guatom999/TicketShop/modules/middlewares/middlwareHandlers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"gorm.io/gorm"
@@ -22,17 +24,26 @@ type (
 	}
 
 	server struct {
-		app *echo.Echo
-		db  *gorm.DB
-		cfg *config.Config
+		app        *echo.Echo
+		db         *gorm.DB
+		cfg        *config.Config
+		middleware middlwareHandlers.MiddlwareHandlerService
 	}
 )
 
+func NewMiddleware(cfg *config.Config) middlwareHandlers.MiddlwareHandlerService {
+	usecase := middlewaresUseCases.NewMiddlewareUsecase()
+	handler := middlwareHandlers.NewMiddlewareHandler(cfg, usecase)
+
+	return handler
+}
+
 func NewEchoServer(db *gorm.DB, cfg *config.Config) Server {
 	return &server{
-		app: echo.New(),
-		db:  db,
-		cfg: cfg,
+		app:        echo.New(),
+		db:         db,
+		cfg:        cfg,
+		middleware: NewMiddleware(cfg),
 	}
 }
 
@@ -62,6 +73,8 @@ func (s *server) Start(pctx context.Context) {
 	go s.gracefulShutdown(pctx, close)
 
 	log.Println("Starting server...")
+
+	s.userModule()
 
 	if err := s.app.Start(fmt.Sprintf(":%d", s.cfg.App.Port)); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Failed to shutdown:%v", err)

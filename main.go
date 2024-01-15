@@ -17,6 +17,7 @@ func main() {
 
 	db := database.NewPostgresDatabase(&cfg).GetDb()
 
+	// Migrate
 	db.AutoMigrate(&users.Users{})
 
 	server.NewEchoServer(db, &cfg).Start(ctx)
